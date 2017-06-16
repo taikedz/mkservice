@@ -8,7 +8,7 @@
 #
 ###/doc
 
-#%include notest.sh bashout.sh colours.sh version.sh askuser.sh
+#%include notest.sh bashout.sh colours.sh version.sh autohelp.sh askuser.sh
 
 stringify() {
 	local commandstring=""
