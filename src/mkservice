@@ -1,0 +1,83 @@
+#!/bin/bash
+
+### Make a systemd service easily Usage:help
+#
+# Make a systemd service in one command
+#
+# 	mkservice [@USER] DESCRIPTION -- COMMAND ...
+#
+###/doc
+
+#%include notest.sh bashout.sh colours.sh version.sh askuser.sh
+
+stringify() {
+	local commandstring=""
+
+	for token in "$@"; do
+		[[ "$token" =~ ' ' ]] && token='"'"$token"'"'
+		commandstring="$commandstring$token "
+	done
+	echo "$commandstring"
+}
+
+makeservice() {
+	[[ "$UID" = 0 ]] || faile "You need to be root to run this script."
+	[[ "$*" =~ -- ]] || faile "No command supplied"
+
+	local username="nobody"
+
+	[[ "$1" =~ ^@ ]] && {
+		username="${1:1}"; shift
+	}
+
+	egrep -q "^$username:" /etc/passwd || faile "Invalid user."
+
+	local desciption=""
+
+	[[ "$1" = -- ]] && faile "Please supply a description"
+
+	while [[ "$1" != -- ]] && [[ -n "$1" ]]; do
+		description="${description}$1 "
+		shift
+	done
+	shift # the '--' token
+
+	# The rest is the command
+	local commandstring="$(stringify "$@")"
+
+	local binpath="$1"
+	local binname="$(basename "$binpath")"
+	
+	[[ -f "$binpath" ]] && [[ "$binpath" =~ ^/ ]] || faile "Invalid command '$binpath'"
+
+	local servicename="$binname-$username"
+	local servicepath="/etc/systemd/system/$servicename.service"
+
+	[[ ! -f "$servicepath" ]] || {
+		warne "That service already exists."
+		uconfirm "Overwrite ?" || faile Aborted
+	}
+
+cat <<EOF > "$servicepath"
+[Unit]
+
+Description=$description
+After=network.target
+
+[Service]
+ExecStart=$commandstring
+User=$username
+Restart=on-failure
+PIDFile=/run/$binname-$username.pid
+
+[Install]
+WantedBy=default.target
+EOF
+	chmod 644 "$servicepath"
+
+	infoe "Configured service $servicename"
+	infoe "Adjust it at ${CBBLU}$servicepath"
+	infoe "Activate it using\n\tsystemctl enable $servicename\n\tsystemctl start $servicename"
+}
+
+notest makeservice "$@"
