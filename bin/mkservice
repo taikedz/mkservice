@@ -280,7 +280,7 @@ BBVERSION_POINT=0
 BBVERSION_FLAG=release
 BBVERSION_PROGRAM=mkservice
 BBVERSION_BUILDDATE=2017-07-06
-BBVERSION_BUILD=18
+BBVERSION_BUILD=19
 
 function bbns_version_infoe {
 	type infoe 2>&1|if grep 'not found' -q; then
@@ -560,9 +560,8 @@ makeservice() {
 	[[ -n "${S_SERVICEFILE:-}" ]] || S_SERVICEFILE="/etc/systemd/system/$S_SERVICENAME.service"
 
 	[[ ! -f "$S_SERVICEFILE" ]] || {
-		warne "That service already exists."
-
 		if [[ "${S_OVERWRITE:-}" != 'true' ]]; then
+			warne "That service already exists."
 			uconfirm "Overwrite ?" || faile Aborted
 		fi
 	}
