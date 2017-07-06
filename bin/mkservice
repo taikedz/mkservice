@@ -1,12 +1,117 @@
 #!/bin/bash
 
-### Make a systemd service easily Usage:help
+### A utility for making systemd services Usage:help
 #
-# Make a systemd service in one command
+# Command structure
 #
-# 	mkservice [@USER] DESCRIPTION -- COMMAND ...
+# 	mkservice -s SERVICENAME -d DESCRIPTION [OPTIONS ...] -- COMMAND ...
+#
+# Mandatory options
+# -----------------
+#
+# -d DESCRIPTION
+# 	A short description for the service
+#
+# -n SERVICENAME
+# 	The name of the service - this should be an alphanumeric string
+#
+# Additional options
+# ------------------
+#
+# -u USERNAME
+# 	The name of the user to run the service as.
+# 	Default is "nobody"
+#
+# -r RESTARTPOLICY
+# 	When to restart the service - available modes are
+# 		no
+# 		on-success
+# 		on-failure
+# 		on-abnormal
+# 		on-watchdog
+# 		on-abort
+# 		always
+# 	Default is "always"
+#
+# -a AFTER
+# 	Set the target to start after
+# 	Default is "network.target"
+#
+# -w WANTEDBY
+# 	Set a target to start before
+# 	Default is "default.target"
+#
+# --overwrite
+# 	If the service file already exists, overwrite without prompting
+#
+# -f FILEPATH
+# 	Choose a different destination to write the file to
 #
 ###/doc
+
+#!/bin/bash
+
+### printhelp Usage:bbuild
+# Write your help as documentation comments in your script
+#
+# If you need to output the help from a running script, call the
+# `printhelp` function and it will print the help documentation
+# in the current script to stdout
+#
+# A help comment looks like this:
+#
+#	### <title> Usage:help
+#	#
+#	# <some content>
+#	#
+#	# end with "###/doc" on its own line (whitespaces before
+#	# and after are OK)
+#	#
+#	###/doc
+#
+###/doc
+
+CHAR='#'
+
+function printhelp {
+	local USAGESTRING=help
+	local TARGETFILE=$0
+	if [[ -n "$*" ]]; then USAGESTRING="$1" ; shift; fi
+	if [[ -n "$*" ]]; then TARGETFILE="$1" ; shift; fi
+
+        echo -e "\n$(basename "$TARGETFILE")\n===\n"
+        local SECSTART='^\s*'"$CHAR$CHAR$CHAR"'\s+(.+?)\s+Usage:'"$USAGESTRING"'\s*$'
+        local SECEND='^\s*'"$CHAR$CHAR$CHAR"'\s*/doc\s*$'
+        local insec="$(mktemp --tmpdir)"; rm "$insec"
+        cat "$TARGETFILE" | while read secline; do
+                if [[ "$secline" =~ $SECSTART ]]; then
+                        touch "$insec"
+                        echo -e "\n${BASH_REMATCH[1]}\n---\n"
+                elif [[ -f $insec ]]; then
+                        if [[ "$secline" =~ $SECEND ]]; then
+                                rm "$insec"
+                        else
+				echo "$secline" | sed -r "s/^\s*$CHAR//g"
+                        fi
+                fi
+        done
+        if [[ -f "$insec" ]]; then
+                echo "WARNING: Non-terminated help block." 1>&2
+		rm "$insec"
+        fi
+	echo ""
+}
+
+### automatic help Usage:main
+#
+# automatically call help if "--help" is detected in arguments
+#
+###/doc
+if [[ "$@" =~ --help ]]; then
+	cols="$(tput cols)"
+	printhelp | fold -w "$cols" -s
+	exit 0
+fi
 
 ### notest FUNCTION ARGUMENTS Usage:bbuild
 #
@@ -172,10 +277,10 @@ export CDEF="[0m"
 BBVERSION_MAJOR=1
 BBVERSION_MINOR=0
 BBVERSION_POINT=0
-BBVERSION_FLAG=dev
+BBVERSION_FLAG=release
 BBVERSION_PROGRAM=mkservice
 BBVERSION_BUILDDATE=2017-07-06
-BBVERSION_BUILD=8
+BBVERSION_BUILD=18
 
 function bbns_version_infoe {
 	type infoe 2>&1|if grep 'not found' -q; then
@@ -199,69 +304,6 @@ if [[ "$*" =~ --version ]]; then
 fi
 #!/bin/bash
 
-### printhelp Usage:bbuild
-# Write your help as documentation comments in your script
-#
-# If you need to output the help from a running script, call the
-# `printhelp` function and it will print the help documentation
-# in the current script to stdout
-#
-# A help comment looks like this:
-#
-#	### <title> Usage:help
-#	#
-#	# <some content>
-#	#
-#	# end with "###/doc" on its own line (whitespaces before
-#	# and after are OK)
-#	#
-#	###/doc
-#
-###/doc
-
-CHAR='#'
-
-function printhelp {
-	local USAGESTRING=help
-	local TARGETFILE=$0
-	if [[ -n "$*" ]]; then USAGESTRING="$1" ; shift; fi
-	if [[ -n "$*" ]]; then TARGETFILE="$1" ; shift; fi
-
-        echo -e "\n$(basename "$TARGETFILE")\n===\n"
-        local SECSTART='^\s*'"$CHAR$CHAR$CHAR"'\s+(.+?)\s+Usage:'"$USAGESTRING"'\s*$'
-        local SECEND='^\s*'"$CHAR$CHAR$CHAR"'\s*/doc\s*$'
-        local insec="$(mktemp --tmpdir)"; rm "$insec"
-        cat "$TARGETFILE" | while read secline; do
-                if [[ "$secline" =~ $SECSTART ]]; then
-                        touch "$insec"
-                        echo -e "\n${BASH_REMATCH[1]}\n---\n"
-                elif [[ -f $insec ]]; then
-                        if [[ "$secline" =~ $SECEND ]]; then
-                                rm "$insec"
-                        else
-				echo "$secline" | sed -r "s/^\s*$CHAR//g"
-                        fi
-                fi
-        done
-        if [[ -f "$insec" ]]; then
-                echo "WARNING: Non-terminated help block." 1>&2
-		rm "$insec"
-        fi
-	echo ""
-}
-
-### automatic help Usage:main
-#
-# automatically call help if "--help" is detected in arguments
-#
-###/doc
-if [[ "$@" =~ --help ]]; then
-	cols="$(tput cols)"
-	printhelp | fold -w "$cols" -s
-	exit 0
-fi
-#!/bin/bash
-
 ### AskUser Usage:bbuild
 # Present the user with questions on stdout
 ###/doc
@@ -270,6 +312,7 @@ fi
 yespat='^(yes|YES|y|Y)$'
 numpat='^[0-9]+$'
 rangepat='[0-9]+,[0-9]+'
+listpat='^[0-9 ]+$'
 blankpat='^ *$'
 
 ### uconfirm Usage:bbuild
@@ -332,14 +375,20 @@ function uchoose_multi {
 	debuge "CHOICES: $choices"
 
 	infoe "$mesg:" 
-	echo -e "$choices"|egrep '^' -n| sed 's/:/: /' 1>&2
+	local choicelist="$(echo -e "$choices"|egrep '^' -n| sed 's/:/: /')"
+	echo "$choicelist" 1>&2
 	
 	local sel=$(uask "Choice")
 	if [[ "$sel" =~ $blankpat ]]; then
 		return 1
+
 	elif [[ "$sel" =~ $numpat ]] || [[ "$sel" =~ $rangepat ]]; then
 		debuge "Number choice [$sel]"
 		echo -e "$choices" | sed -n "$sel p"
+	
+	elif [[ "$sel" =~ $listpat ]]; then
+		echo "$choicelist" | egrep "^${sel// /|}:" | sed -r 's/^[0-9]+: //'
+
 	else
 		debuge "Pattern choice [$sel]"
 		echo -e "$choices"  |egrep "$(echo "$sel"|tr " " '|')"
@@ -444,7 +493,7 @@ parse_arguments() {
 }
 
 validate_restart() {
-	local rpat="^(always|on-fail|never)$"
+	local rpat="^(no|on-success|on-failure|on-abnormal|on-watchdog|on-abort|always)$"
 	local rpolicy="$1"; shift
 
 	[[ "$rpolicy" =~ $rpat ]] && echo "$rpolicy" || faile "Invalid restart policy $rpolicy"
@@ -467,31 +516,6 @@ stringify() {
 		commandstring="$commandstring$token "
 	done
 	echo "$commandstring"
-}
-
-extract_name() {
-	local username="nobody"
-
-	[[ "$1" =~ ^@ ]] && {
-		username="${1:1}"
-	}
-
-	egrep -q "^$username:" /etc/passwd || faile "Invalid user."
-
-	echo "$username"
-}
-
-extract_description() {
-	local desciption=""
-
-	[[ "$1" = -- ]] && faile "Please supply a description"
-
-	while [[ "$1" != -- ]] && [[ -n "$1" ]]; do
-		description="${description}$1 "
-		shift
-	done
-
-	echo "$description"
 }
 
 check_bin() {
@@ -530,7 +554,7 @@ makeservice() {
 	parse_arguments "$@"
 	verify_arguments
 
-	S_COMMANDSTRING="$(stringify "$S_COMMAND")"
+	S_COMMANDSTRING="$(stringify "${S_COMMAND[@]}")"
 	check_bin "${S_COMMAND[0]}"
 
 	[[ -n "${S_SERVICEFILE:-}" ]] || S_SERVICEFILE="/etc/systemd/system/$S_SERVICENAME.service"
@@ -542,6 +566,8 @@ makeservice() {
 			uconfirm "Overwrite ?" || faile Aborted
 		fi
 	}
+
+	write_servicefile
 
 
 	infoe "Configured service $S_SERVICENAME"
