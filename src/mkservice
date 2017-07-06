@@ -60,9 +60,8 @@ makeservice() {
 	[[ -n "${S_SERVICEFILE:-}" ]] || S_SERVICEFILE="/etc/systemd/system/$S_SERVICENAME.service"
 
 	[[ ! -f "$S_SERVICEFILE" ]] || {
-		warne "That service already exists."
-
 		if [[ "${S_OVERWRITE:-}" != 'true' ]]; then
+			warne "That service already exists."
 			uconfirm "Overwrite ?" || faile Aborted
 		fi
 	}
