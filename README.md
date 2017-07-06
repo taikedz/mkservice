@@ -2,6 +2,15 @@
 
 A tool for making systemd services easily
 
+## Install
+
+Installing `mkservice` is easy - clone the repository and run the install script. Or more completely, do it from a [tagged release](https://github.com/taikedz/mkservice/releases)
+
+	git clone https://github.com/taikedz/mkservice
+	cd mkservice
+	git checkout 1.0.0
+	sudo ./install.sh
+
 ## Usage example
 
 	mkservice -s SERVICENAME -d DESCRIPTION [OPTIONS ...] -- COMMAND ...
