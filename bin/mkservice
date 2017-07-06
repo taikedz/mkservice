@@ -172,10 +172,10 @@ export CDEF="[0m"
 BBVERSION_MAJOR=1
 BBVERSION_MINOR=0
 BBVERSION_POINT=0
-BBVERSION_FLAG=release
+BBVERSION_FLAG=dev
 BBVERSION_PROGRAM=mkservice
-BBVERSION_BUILDDATE=2017-06-16
-BBVERSION_BUILD=3
+BBVERSION_BUILDDATE=2017-07-06
+BBVERSION_BUILD=8
 
 function bbns_version_infoe {
 	type infoe 2>&1|if grep 'not found' -q; then
@@ -370,8 +370,96 @@ function uchoose {
 	done
 }
 
+#!/bin/bash
+
+### Varify Usage:bbuild
+# Make a string into a valid variable name or file name
+#
+# Replaces any string of invalid characters into a "_"
+#
+# Valid characters for varify_var are:
+#
+# * a-z
+# * A-Z
+# * 0-9
+# * underscore ("_")
+#
+# Valid characters for varify_fil are as above, plus:
+#
+# * dash ("-")
+# * period (".")
+#
+# Can be used to produce filenames.
+###/doc
+
+function varify_var {
+	echo "$*" | sed -r 's/[^a-zA-Z0-9_]/_/g'
+}
+
+function varify_fil {
+	echo "$*" | sed -r 's/[^a-zA-Z0-9_.-]/_/g'
+}
+S_USER=nobody
+S_RESTART=always
+S_AFTER=network.target
+S_WANTEDBY=default.target
+
+S_OVERWRITE=false
+
+parse_arguments() {
+	while [[ -n "$*" ]]; do
+		local token="$1"; shift
+
+		case "$token" in
+		-d)
+			S_DESCRIPTION="$1"; shift
+			;;
+		-u)
+			S_USER="$(varify_var "$1")"; shift
+			;;
+		-r)
+			S_RESTART="$(validate_restart "$1")"
+			;;
+		-n)
+			S_SERVICENAME="$(varify_fil "$1")"; shift
+			;;
+		-a)
+			S_AFTER="$1"; shift
+			;;
+		-w)
+			S_WANTEDBY="$1"; shift
+			;;
+		--overwrite)
+			S_OVERWRITE=true
+			;;
+		-f)
+			S_SERVICEFILE="$1"; shift
+			;;
+		--)
+			S_COMMAND=("$@")
+			return
+			;;
+		esac
+	done
+}
+
+validate_restart() {
+	local rpat="^(always|on-fail|never)$"
+	local rpolicy="$1"; shift
+
+	[[ "$rpolicy" =~ $rpat ]] && echo "$rpolicy" || faile "Invalid restart policy $rpolicy"
+}
+
+verify_arguments() {
+	( [[ -n "${S_DESCRIPTION:-}" ]] &&
+	  [[ -n "${S_COMMAND:-}" ]] &&
+	  [[ -n "${S_SERVICENAME:-}" ]] ) || faile "Not enough information. Please see 'mkservice --help' for more info"
+}
+
+set -euo pipefail
 
 stringify() {
+	# Reinstate any doublequotes
 	local commandstring=""
 
 	for token in "$@"; do
@@ -381,18 +469,19 @@ stringify() {
 	echo "$commandstring"
 }
 
-makeservice() {
-	[[ "$UID" = 0 ]] || faile "You need to be root to run this script."
-	[[ "$*" =~ -- ]] || faile "No command supplied"
-
+extract_name() {
 	local username="nobody"
 
 	[[ "$1" =~ ^@ ]] && {
-		username="${1:1}"; shift
+		username="${1:1}"
 	}
 
 	egrep -q "^$username:" /etc/passwd || faile "Invalid user."
 
+	echo "$username"
+}
+
+extract_description() {
 	local desciption=""
 
 	[[ "$1" = -- ]] && faile "Please supply a description"
@@ -401,44 +490,63 @@ makeservice() {
 		description="${description}$1 "
 		shift
 	done
-	shift # the '--' token
 
-	# The rest is the command
-	local commandstring="$(stringify "$@")"
+	echo "$description"
+}
 
-	local binpath="$1"
-	local binname="$(basename "$binpath")"
+check_bin() {
+	local S_BIN="$1"; shift
 	
-	[[ -f "$binpath" ]] && [[ "$binpath" =~ ^/ ]] || faile "Invalid command '$binpath'"
+	[[ "$S_BIN" =~ ^/ ]] || faile "Invalid command '$S_BIN' - use an absolute path"
+	[[ -f "$S_BIN" ]] || faile "Invalid command '$S_BIN' - file not found"
+}
 
-	local servicename="$binname-$username"
-	local servicepath="/etc/systemd/system/$servicename.service"
+write_servicefile() {
+	local tmpfile="$(mktemp)"
 
-	[[ ! -f "$servicepath" ]] || {
-		warne "That service already exists."
-		uconfirm "Overwrite ?" || faile Aborted
-	}
-
-cat <<EOF > "$servicepath"
+cat <<EOF > "$tmpfile"
 [Unit]
 
-Description=$description
-After=network.target
+Description=$S_DESCRIPTION
+After=$S_AFTER
 
 [Service]
-ExecStart=$commandstring
-User=$username
-Restart=on-failure
-PIDFile=/run/$binname-$username.pid
+ExecStart=$S_COMMANDSTRING
+User=$S_USER
+Restart=$S_RESTART
+PIDFile=/run/$S_SERVICENAME.pid
 
 [Install]
-WantedBy=default.target
+WantedBy=$S_WANTEDBY
 EOF
-	chmod 644 "$servicepath"
 
-	infoe "Configured service $servicename"
-	infoe "Adjust it at ${CBBLU}$servicepath"
-	infoe "Activate it using\n\tsystemctl enable $servicename\n\tsystemctl start $servicename"
+	mv "$tmpfile" "$S_SERVICEFILE"
+	chmod 644 "$S_SERVICEFILE"
+}
+
+makeservice() {
+	[[ "$UID" = 0 ]] || faile "You need to be root to run this script."
+
+	parse_arguments "$@"
+	verify_arguments
+
+	S_COMMANDSTRING="$(stringify "$S_COMMAND")"
+	check_bin "${S_COMMAND[0]}"
+
+	[[ -n "${S_SERVICEFILE:-}" ]] || S_SERVICEFILE="/etc/systemd/system/$S_SERVICENAME.service"
+
+	[[ ! -f "$S_SERVICEFILE" ]] || {
+		warne "That service already exists."
+
+		if [[ "${S_OVERWRITE:-}" != 'true' ]]; then
+			uconfirm "Overwrite ?" || faile Aborted
+		fi
+	}
+
+
+	infoe "Configured service $S_SERVICENAME"
+	infoe "Adjust it at ${CBBLU}$S_SERVICEFILE"
+	infoe "Activate it using\n\tsystemctl enable $S_SERVICENAME\n\tsystemctl start $S_SERVICENAME"
 }
 
 notest makeservice "$@"
