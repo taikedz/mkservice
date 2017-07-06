@@ -1,14 +1,8 @@
 #!/bin/bash
 
-### Make a systemd service easily Usage:help
-#
-# Make a systemd service in one command
-#
-# 	mkservice [@USER] DESCRIPTION -- COMMAND ...
-#
-###/doc
+#%include help.sh
 
-#%include notest.sh bashout.sh colours.sh version.sh autohelp.sh askuser.sh varify.sh
+#%include notest.sh bashout.sh colours.sh version.sh askuser.sh varify.sh
 #%include arguments.sh
 
 set -euo pipefail
@@ -22,31 +16,6 @@ stringify() {
 		commandstring="$commandstring$token "
 	done
 	echo "$commandstring"
-}
-
-extract_name() {
-	local username="nobody"
-
-	[[ "$1" =~ ^@ ]] && {
-		username="${1:1}"
-	}
-
-	egrep -q "^$username:" /etc/passwd || faile "Invalid user."
-
-	echo "$username"
-}
-
-extract_description() {
-	local desciption=""
-
-	[[ "$1" = -- ]] && faile "Please supply a description"
-
-	while [[ "$1" != -- ]] && [[ -n "$1" ]]; do
-		description="${description}$1 "
-		shift
-	done
-
-	echo "$description"
 }
 
 check_bin() {
@@ -85,7 +54,7 @@ makeservice() {
 	parse_arguments "$@"
 	verify_arguments
 
-	S_COMMANDSTRING="$(stringify "$S_COMMAND")"
+	S_COMMANDSTRING="$(stringify "${S_COMMAND[@]}")"
 	check_bin "${S_COMMAND[0]}"
 
 	[[ -n "${S_SERVICEFILE:-}" ]] || S_SERVICEFILE="/etc/systemd/system/$S_SERVICENAME.service"
@@ -97,6 +66,8 @@ makeservice() {
 			uconfirm "Overwrite ?" || faile Aborted
 		fi
 	}
+
+	write_servicefile
 
 
 	infoe "Configured service $S_SERVICENAME"
