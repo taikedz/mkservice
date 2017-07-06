@@ -43,7 +43,7 @@ parse_arguments() {
 }
 
 validate_restart() {
-	local rpat="^(always|on-fail|never)$"
+	local rpat="^(no|on-success|on-failure|on-abnormal|on-watchdog|on-abort|always)$"
 	local rpolicy="$1"; shift
 
 	[[ "$rpolicy" =~ $rpat ]] && echo "$rpolicy" || faile "Invalid restart policy $rpolicy"
