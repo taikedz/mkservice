@@ -17,3 +17,19 @@ Example for running a Minetest game server instance (only restarts on error - if
 	mkservice -s minetest -d "Minetest world1 server" -u minetest -r on-failure -- /home/minetest/mt-runner
 
 See the [help file](src/help.sh) for a list of options.
+
+## Building the tool
+
+This project is written in bash, and uses [Bash Builder](https://github.com/taikedz/bash-builder) to build the runnable script.
+
+Individual source files are in `src/`
+
+This project depends on common libraries provided by Bash Builder.
+
+**Build**
+
+From the project root (where this README resides), simply run
+
+	bbuild
+
+And this should build this project to the `bin/` directory.
