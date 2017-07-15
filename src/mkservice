@@ -2,7 +2,7 @@
 
 #%include help.sh
 
-#%include notest.sh bashout.sh colours.sh version.sh askuser.sh varify.sh
+#%include notest.sh bashout.sh colours.sh version.sh askuser.sh varify.sh getbin.sh
 #%include arguments.sh
 
 set -euo pipefail
@@ -48,9 +48,14 @@ EOF
 	chmod 644 "$S_SERVICEFILE"
 }
 
+check_for_systemd() {
+	hasbin systemctl || faile "systemd not in use"
+}
+
 makeservice() {
 	[[ "$UID" = 0 ]] || faile "You need to be root to run this script."
 
+	check_for_systemd
 	parse_arguments "$@"
 	verify_arguments
 

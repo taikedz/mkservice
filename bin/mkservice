@@ -277,10 +277,10 @@ export CDEF="[0m"
 BBVERSION_MAJOR=1
 BBVERSION_MINOR=0
 BBVERSION_POINT=0
-BBVERSION_FLAG=release
+BBVERSION_FLAG=dev
 BBVERSION_PROGRAM=mkservice
-BBVERSION_BUILDDATE=2017-07-06
-BBVERSION_BUILD=19
+BBVERSION_BUILDDATE=2017-07-13
+BBVERSION_BUILD=21
 
 function bbns_version_infoe {
 	type infoe 2>&1|if grep 'not found' -q; then
@@ -312,7 +312,6 @@ fi
 yespat='^(yes|YES|y|Y)$'
 numpat='^[0-9]+$'
 rangepat='[0-9]+,[0-9]+'
-listpat='^[0-9 ]+$'
 blankpat='^ *$'
 
 ### uconfirm Usage:bbuild
@@ -375,20 +374,14 @@ function uchoose_multi {
 	debuge "CHOICES: $choices"
 
 	infoe "$mesg:" 
-	local choicelist="$(echo -e "$choices"|egrep '^' -n| sed 's/:/: /')"
-	echo "$choicelist" 1>&2
+	echo -e "$choices"|egrep '^' -n| sed 's/:/: /' 1>&2
 	
 	local sel=$(uask "Choice")
 	if [[ "$sel" =~ $blankpat ]]; then
 		return 1
-
 	elif [[ "$sel" =~ $numpat ]] || [[ "$sel" =~ $rangepat ]]; then
 		debuge "Number choice [$sel]"
 		echo -e "$choices" | sed -n "$sel p"
-	
-	elif [[ "$sel" =~ $listpat ]]; then
-		echo "$choicelist" | egrep "^${sel// /|}:" | sed -r 's/^[0-9]+: //'
-
 	else
 		debuge "Pattern choice [$sel]"
 		echo -e "$choices"  |egrep "$(echo "$sel"|tr " " '|')"
@@ -447,6 +440,50 @@ function varify_var {
 
 function varify_fil {
 	echo "$*" | sed -r 's/[^a-zA-Z0-9_.-]/_/g'
+}
+#!/bin/bash
+
+### getbin COMMANDS ... Usage:bbuild
+#
+# Return the first existing binary
+#
+# Useful for finding an appropriate binary when you know
+# different systems may supply binaries under different names.
+#
+# Returns the full path from `which` for the first executable
+# encountered.
+#
+# Example:
+#
+# 	getbin markdown_py markdown ./mymarkdown
+#
+# Tries in turn to get a `markdown_py`, then a `markdown`, and then a local `./mymarkdown`
+#
+###/doc
+
+function getbin {
+	local BINEXE=
+	for binname in "$@"; do
+		# Some implementations of `which` print error messages
+		# Not useful here.
+		BINEXE=$(which "$binname" 2>/dev/null)
+
+		if [[ -n "$BINEXE" ]]; then
+			echo "$BINEXE"
+			return 0
+		fi
+	done
+	return 1
+}
+
+### hasbin COMMANDS ... Usage:bbuild
+#
+# Determine if at least one of the binaries listed is present and installed on the system
+#
+###/doc
+
+function hasbin {
+	[[ -n "$(getbin "$@")" ]]
 }
 S_USER=nobody
 S_RESTART=always
@@ -548,9 +585,14 @@ EOF
 	chmod 644 "$S_SERVICEFILE"
 }
 
+check_for_systemd() {
+	hasbin aasystemctl || faile "Systemd not detected"
+}
+
 makeservice() {
 	[[ "$UID" = 0 ]] || faile "You need to be root to run this script."
 
+	check_for_systemd
 	parse_arguments "$@"
 	verify_arguments
 
