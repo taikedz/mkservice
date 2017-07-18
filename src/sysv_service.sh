@@ -6,7 +6,16 @@
 # SYSV_DEFAULTSTART="2 3 4 5"
 # SYSV_DEFAULTSTOP="0 1 6"
 
+main() {
+	# We need to get the arguments
+	# Then make a temp and write a file
+	# Do replaements
+	# Move the temp to the target location
+	# Print message about chkconfig
+}
+
 write_sysvinit_file() {
+	local tempfile="$1"; shift
 cat <<'EOSYSVTEMPLATE' > "$tmpfile"
 #!/bin/bash
 ### BEGIN INIT INFO

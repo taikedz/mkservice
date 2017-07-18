@@ -42,3 +42,9 @@ From the project root (where this README resides), simply run
 	bbuild
 
 And this should build this project to the `bin/` directory.
+
+**Contributing**
+
+Contributions are welcome, please keep in mind to write clean code (bash does not inevitably mean blob scripting!).
+
+Please be mindful not to include the `bbversion/*` and `bin/*` files in commits that will be pull-requested.
