@@ -1,3 +1,5 @@
+#%include out.sh
+
 S_USER=nobody
 S_RESTART=always
 S_AFTER=network.target
@@ -46,11 +48,11 @@ validate_restart() {
 	local rpat="^(no|on-success|on-failure|on-abnormal|on-watchdog|on-abort|always)$"
 	local rpolicy="$1"; shift
 
-	[[ "$rpolicy" =~ $rpat ]] && echo "$rpolicy" || faile "Invalid restart policy $rpolicy"
+	[[ "$rpolicy" =~ $rpat ]] && echo "$rpolicy" || out:fail "Invalid restart policy $rpolicy"
 }
 
 verify_arguments() {
 	( [[ -n "${S_DESCRIPTION:-}" ]] &&
 	  [[ -n "${S_COMMAND:-}" ]] &&
-	  [[ -n "${S_SERVICENAME:-}" ]] ) || faile "Not enough information. Please see 'mkservice --help' for more info"
+	  [[ -n "${S_SERVICENAME:-}" ]] ) || out:fail "Not enough information. Please see 'mkservice --help' for more info"
 }

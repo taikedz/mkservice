@@ -8,7 +8,7 @@ Installing `mkservice` is easy - clone the repository and run the install script
 
 	git clone https://github.com/taikedz/mkservice
 	cd mkservice
-	git checkout 1.0.0
+	git checkout 1.0.1
 	sudo ./install.sh
 
 ## Usage example
@@ -29,7 +29,7 @@ See the [help file](src/help.sh) for a list of options.
 
 ## Building the tool
 
-This project is written in bash, and uses [Bash Builder](https://github.com/taikedz/bash-builder) to build the runnable script.
+This project is written in bash, and uses [Bash Builder](https://github.com/taikedz/bash-builder) to build the runnable script. (current version built with bbuild 5.1)
 
 Individual source files are in `src/`
 

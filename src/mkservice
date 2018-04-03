@@ -2,10 +2,8 @@
 
 #%include help.sh
 
-#%include notest.sh bashout.sh colours.sh version.sh askuser.sh varify.sh getbin.sh
+#%include out.sh colours.sh askuser.sh varify.sh bincheck.sh runmain.sh isroot.sh
 #%include arguments.sh
-
-set -euo pipefail
 
 stringify() {
 	# Reinstate any doublequotes
@@ -21,8 +19,8 @@ stringify() {
 check_bin() {
 	local S_BIN="$1"; shift
 	
-	[[ "$S_BIN" =~ ^/ ]] || faile "Invalid command '$S_BIN' - use an absolute path"
-	[[ -f "$S_BIN" ]] || faile "Invalid command '$S_BIN' - file not found"
+	[[ "$S_BIN" =~ ^/ ]] || out:fail "Invalid command '$S_BIN' - use an absolute path"
+	[[ -f "$S_BIN" ]] || out:fail "Invalid command '$S_BIN' - file not found"
 }
 
 write_servicefile() {
@@ -49,11 +47,15 @@ EOF
 }
 
 check_for_systemd() {
-	hasbin systemctl || faile "systemd not in use"
+	bincheck:has systemctl || out:fail "systemd not in use"
 }
 
 makeservice() {
-	[[ "$UID" = 0 ]] || faile "You need to be root to run this script."
+	set -euo pipefail
+
+	autohelp:check "$@"
+
+	isroot || out:fail "You need to be root to run this script"
 
 	check_for_systemd
 	parse_arguments "$@"
@@ -66,17 +68,17 @@ makeservice() {
 
 	[[ ! -f "$S_SERVICEFILE" ]] || {
 		if [[ "${S_OVERWRITE:-}" != 'true' ]]; then
-			warne "That service already exists."
-			uconfirm "Overwrite ?" || faile Aborted
+			out:warn "That service already exists."
+			askuser:confirm "Overwrite ?" || out:fail Aborted
 		fi
 	}
 
 	write_servicefile
 
 
-	infoe "Configured service $S_SERVICENAME"
-	infoe "Adjust it at ${CBBLU}$S_SERVICEFILE"
-	infoe "Activate it using\n\tsystemctl enable $S_SERVICENAME\n\tsystemctl start $S_SERVICENAME"
+	out:info "Configured service $S_SERVICENAME"
+	out:info "Adjust it at ${CBBLU}$S_SERVICEFILE"
+	out:info "Activate it using\n\tsystemctl enable $S_SERVICENAME\n\tsystemctl start $S_SERVICENAME"
 }
 
-notest makeservice "$@"
+runmain mkservice makeservice "$@"
