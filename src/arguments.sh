@@ -1,4 +1,4 @@
-#%include out.sh
+#%include std/out.sh
 
 S_USER=nobody
 S_RESTART=always

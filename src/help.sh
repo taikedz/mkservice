@@ -12,6 +12,9 @@
 #
 # -n SERVICENAME
 # 	The name of the service - this should be an alphanumeric string
+# 
+# -- COMMAND ...
+#   The literal command to run as a service
 #
 # Additional options
 # ------------------
@@ -32,11 +35,11 @@
 # 	Default is "always"
 #
 # -a AFTER
-# 	Set the target to start after
+# 	Set the target to start your service after
 # 	Default is "network.target"
 #
 # -w WANTEDBY
-# 	Set a target to start before
+# 	Set a target to start your service before
 # 	Default is "default.target"
 #
 # --overwrite
@@ -47,4 +50,4 @@
 #
 ###/doc
 
-#%include autohelp.sh
+#%include std/autohelp.sh

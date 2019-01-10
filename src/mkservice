@@ -1,8 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #%include help.sh
 
-#%include out.sh colours.sh askuser.sh varify.sh bincheck.sh runmain.sh isroot.sh
+#%include std/out.sh
+#%include std/colours.sh
+#%include std/askuser.sh
+#%include std/varify.sh
+#%include std/bincheck.sh
+#%include std/runmain.sh
+#%include std/isroot.sh
+#%include std/autohelp.sh
+
 #%include arguments.sh
 
 stringify() {
